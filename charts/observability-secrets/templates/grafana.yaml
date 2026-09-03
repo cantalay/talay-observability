@@ -1,0 +1,21 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin
+spec:
+  refreshInterval: {{ .Values.refreshInterval | quote }}
+  secretStoreRef:
+    name: {{ .Values.secretStore.name | quote }}
+    kind: {{ .Values.secretStore.kind | quote }}
+  target:
+    name: grafana-admin
+    creationPolicy: Owner
+  data:
+    - secretKey: admin-user
+      remoteRef:
+        key: {{ .Values.grafana.remoteKey | quote }}
+        property: admin-user
+    - secretKey: admin-password
+      remoteRef:
+        key: {{ .Values.grafana.remoteKey | quote }}
+        property: admin-password

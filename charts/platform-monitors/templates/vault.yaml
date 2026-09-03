@@ -1,0 +1,24 @@
+{{- if .Values.vault.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vault
+  labels:
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.vault.namespace | quote }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      app.kubernetes.io/instance: vault
+  endpoints:
+    - port: http
+      path: /v1/sys/metrics
+      interval: {{ .Values.vault.interval }}
+      params:
+        format:
+          - prometheus
+{{- end }}

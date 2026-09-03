@@ -1,0 +1,6 @@
+grafana_domain = "grafana.cantalay.com"
+storage_class  = "local-path"
+
+# Browser/mobil doğrudan ingest için güvenlik katmanını tamamlamadan açmayın.
+otel_public_ingress_enabled = false
+otel_domain                 = "otel.cantalay.com"

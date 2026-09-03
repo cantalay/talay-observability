@@ -1,0 +1,52 @@
+replicas: 1
+priorityClassName: talay-platform-critical
+
+tempo:
+  reportingEnabled: false
+  retention: ${retention}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+    processor:
+      service_graphs: {}
+      span_metrics:
+        enable_target_info: true
+    storage:
+      path: /var/tempo/generator/wal
+    traces_storage:
+      path: /var/tempo/generator/traces
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+
+persistence:
+  enabled: true
+  enableStatefulSetAutoDeletePVC: false
+  storageClassName: ${storage_class}
+  accessModes:
+    - ReadWriteOnce
+  size: ${storage_size}
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3200"

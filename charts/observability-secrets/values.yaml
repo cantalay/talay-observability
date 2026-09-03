@@ -1,0 +1,8 @@
+refreshInterval: 1h
+secretStore:
+  name: vault
+  kind: ClusterSecretStore
+grafana:
+  remoteKey: platform/grafana
+alertmanager:
+  remoteKey: platform/alertmanager

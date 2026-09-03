@@ -1,0 +1,117 @@
+replicas: 1
+
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+priorityClassName: talay-platform-critical
+
+persistence:
+  enabled: true
+  type: pvc
+  storageClassName: ${storage_class}
+  size: ${storage_size}
+  annotations:
+    helm.sh/resource-policy: keep
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - ${grafana_domain}
+  path: /
+  pathType: Prefix
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - ${grafana_domain}
+
+serviceMonitor:
+  enabled: true
+
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: ALL
+    label: grafana_dashboard
+    labelValue: "1"
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    deleteDatasources:
+      - name: Prometheus
+        orgId: 1
+      - name: Loki
+        orgId: 1
+      - name: Tempo
+        orgId: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+        jsonData:
+          httpMethod: POST
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway.monitoring.svc.cluster.local
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '(?i)trace[_-]?id[=:" ]+([0-9a-f]{16,32})'
+              datasourceUid: tempo
+              url: '$${__value.raw}'
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.monitoring.svc.cluster.local:3200
+        jsonData:
+          nodeGraph:
+            enabled: true
+          serviceMap:
+            datasourceUid: prometheus
+          tracesToLogsV2:
+            datasourceUid: loki
+            filterByTraceID: true
+            filterBySpanID: true
+            spanStartTimeShift: -1h
+            spanEndTimeShift: 1h
+            tags:
+              - key: service.name
+                value: app
+              - key: k8s.namespace.name
+                value: namespace
+
+grafana.ini:
+  server:
+    root_url: https://${grafana_domain}
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+  security:
+    cookie_secure: true
+    cookie_samesite: strict
+    disable_gravatar: true
+  users:
+    allow_sign_up: false
+  auth.anonymous:
+    enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 512Mi

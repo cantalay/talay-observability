@@ -1,0 +1,6 @@
+apiVersion: v2
+name: platform-monitors
+description: Cross-namespace Prometheus monitors for Talay platform services
+type: application
+version: 0.1.0
+appVersion: "1.0"

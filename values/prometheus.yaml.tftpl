@@ -1,0 +1,119 @@
+grafana:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+
+defaultRules:
+  create: true
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    useExistingSecret: true
+    configSecret: alertmanager-config
+    priorityClassName: talay-platform-critical
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ${storage_class}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: ${alertmanager_storage_size}
+
+prometheusOperator:
+  priorityClassName: talay-platform-critical
+  admissionWebhooks:
+    enabled: true
+
+prometheus:
+  prometheusSpec:
+    priorityClassName: talay-platform-critical
+    retention: ${metrics_retention}
+    walCompression: true
+    enableRemoteWriteReceiver: true
+    enableFeatures:
+      - exemplar-storage
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+    ruleNamespaceSelector: {}
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ${storage_class}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: ${prometheus_storage_size}
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+    additionalScrapeConfigs:
+      - job_name: kubernetes-service-annotations
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - action: keep
+            source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            regex: "true"
+          - action: replace
+            source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+            target_label: __scheme__
+            regex: (https?)
+          - action: replace
+            source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+            target_label: __metrics_path__
+            regex: (.+)
+          - action: replace
+            source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+            target_label: __address__
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - action: replace
+            source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - action: replace
+            source_labels: [__meta_kubernetes_service_name]
+            target_label: service
+      - job_name: kubernetes-pod-annotations
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - action: keep
+            source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            regex: "true"
+          - action: replace
+            source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            target_label: __metrics_path__
+            regex: (.+)
+          - action: replace
+            source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            target_label: __address__
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - action: replace
+            source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - action: replace
+            source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+
+prometheus-node-exporter:
+  priorityClassName: talay-platform-critical
+
+kube-state-metrics:
+  priorityClassName: talay-platform-critical
