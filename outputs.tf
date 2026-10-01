@@ -1,5 +1,5 @@
 output "grafana_url" {
-  value = "https://${var.grafana_domain}"
+  value = module.grafana.url
 }
 
 output "otlp_endpoints" {

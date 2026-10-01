@@ -1,172 +1,116 @@
-resource "helm_release" "secrets" {
-  name      = "observability-secrets"
-  namespace = "monitoring"
-  chart     = "${path.module}/charts/observability-secrets"
+module "observability_secrets" {
+  source = "./modules/observability-secrets"
 
-  atomic  = true
-  wait    = true
-  timeout = 300
-
-  values = [yamlencode({
-    refreshInterval = "1h"
-    grafana = {
-      remoteKey = var.vault_grafana_key
-    }
-    alertmanager = {
-      remoteKey = var.vault_alertmanager_key
-    }
-  })]
+  chart_path             = "${path.root}/charts/observability-secrets"
+  vault_grafana_key      = var.vault_grafana_key
+  vault_alertmanager_key = var.vault_alertmanager_key
 }
 
-resource "helm_release" "prometheus" {
-  name       = "kube-prometheus-stack"
-  namespace  = "monitoring"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  version    = "88.6.3"
+module "prometheus" {
+  source = "./modules/prometheus"
 
-  atomic  = true
-  wait    = true
-  timeout = 1200
+  storage_class             = var.storage_class
+  prometheus_storage_size   = var.prometheus_storage_size
+  alertmanager_storage_size = var.alertmanager_storage_size
+  metrics_retention         = var.metrics_retention
 
-  values = [templatefile("${path.module}/values/prometheus.yaml.tftpl", {
-    storage_class             = var.storage_class
-    prometheus_storage_size   = var.prometheus_storage_size
-    alertmanager_storage_size = var.alertmanager_storage_size
-    metrics_retention         = var.metrics_retention
-  })]
-
-  depends_on = [helm_release.secrets]
+  depends_on = [module.observability_secrets]
 }
 
-resource "helm_release" "platform_monitors" {
-  name      = "platform-monitors"
-  namespace = "monitoring"
-  chart     = "${path.module}/charts/platform-monitors"
+module "platform_monitors" {
+  source = "./modules/platform-monitors"
 
-  atomic  = true
-  wait    = true
-  timeout = 300
+  chart_path = "${path.root}/charts/platform-monitors"
 
-  depends_on = [helm_release.prometheus]
+  depends_on = [module.prometheus]
 }
 
-resource "helm_release" "loki" {
-  name       = "loki"
-  namespace  = "monitoring"
-  repository = "https://grafana-community.github.io/helm-charts"
-  chart      = "loki"
-  version    = "18.11.7"
+module "loki" {
+  source = "./modules/loki"
 
-  atomic  = true
-  wait    = true
-  timeout = 1200
+  storage_class    = var.storage_class
+  storage_size     = var.loki_storage_size
+  retention_period = var.logs_retention
 
-  values = [templatefile("${path.module}/values/loki.yaml.tftpl", {
-    storage_class    = var.storage_class
-    storage_size     = var.loki_storage_size
-    retention_period = var.logs_retention
-  })]
-
-  depends_on = [helm_release.prometheus]
+  depends_on = [module.prometheus]
 }
 
-resource "helm_release" "tempo" {
-  name       = "tempo"
-  namespace  = "monitoring"
-  repository = "https://grafana-community.github.io/helm-charts"
-  chart      = "tempo"
-  version    = "2.3.0"
+module "tempo" {
+  source = "./modules/tempo"
 
-  atomic  = true
-  wait    = true
-  timeout = 900
+  storage_class = var.storage_class
+  storage_size  = var.tempo_storage_size
+  retention     = var.traces_retention
 
-  values = [templatefile("${path.module}/values/tempo.yaml.tftpl", {
-    storage_class = var.storage_class
-    storage_size  = var.tempo_storage_size
-    retention     = var.traces_retention
-  })]
-
-  depends_on = [helm_release.prometheus]
+  depends_on = [module.prometheus]
 }
 
-resource "helm_release" "alloy" {
-  name       = "alloy"
-  namespace  = "monitoring"
-  repository = "https://grafana.github.io/helm-charts"
-  chart      = "alloy"
-  version    = "1.12.1"
+module "alloy" {
+  source = "./modules/alloy"
 
-  atomic  = true
-  wait    = true
-  timeout = 900
-
-  values = [file("${path.module}/values/alloy.yaml")]
-
-  depends_on = [helm_release.loki]
+  depends_on = [module.loki]
 }
 
-resource "helm_release" "otel_collector" {
-  name       = "otel-collector"
-  namespace  = "monitoring"
-  repository = "https://open-telemetry.github.io/opentelemetry-helm-charts"
-  chart      = "opentelemetry-collector"
-  version    = "0.172.0"
+module "otel_collector" {
+  source = "./modules/otel-collector"
 
-  atomic  = true
-  wait    = true
-  timeout = 900
+  public_ingress_enabled = var.otel_public_ingress_enabled
+  domain                 = var.otel_domain
 
-  values = [
-    file("${path.module}/values/otel-collector.yaml"),
-    yamlencode({
-      ingress = {
-        enabled          = var.otel_public_ingress_enabled
-        ingressClassName = "traefik"
-        annotations = {
-          "cert-manager.io/cluster-issuer" = "letsencrypt"
-        }
-        hosts = var.otel_public_ingress_enabled ? [{
-          host = var.otel_domain
-          paths = [{
-            path     = "/"
-            pathType = "Prefix"
-            port     = 4318
-          }]
-        }] : []
-        tls = var.otel_public_ingress_enabled ? [{
-          secretName = "otel-collector-tls"
-          hosts      = [var.otel_domain]
-        }] : []
-      }
-    }),
-  ]
-
-  depends_on = [helm_release.prometheus, helm_release.loki, helm_release.tempo]
+  depends_on = [module.prometheus, module.loki, module.tempo]
 }
 
-resource "helm_release" "grafana" {
-  name       = "grafana"
-  namespace  = "monitoring"
-  repository = "https://grafana-community.github.io/helm-charts"
-  chart      = "grafana"
-  version    = "13.1.0"
+module "grafana" {
+  source = "./modules/grafana"
 
-  atomic  = true
-  wait    = true
-  timeout = 900
-
-  values = [templatefile("${path.module}/values/grafana.yaml.tftpl", {
-    grafana_domain = var.grafana_domain
-    storage_class  = var.storage_class
-    storage_size   = var.grafana_storage_size
-  })]
+  domain        = var.grafana_domain
+  storage_class = var.storage_class
+  storage_size  = var.grafana_storage_size
 
   depends_on = [
-    helm_release.secrets,
-    helm_release.prometheus,
-    helm_release.loki,
-    helm_release.tempo,
+    module.observability_secrets,
+    module.prometheus,
+    module.loki,
+    module.tempo,
   ]
+}
+
+moved {
+  from = helm_release.secrets
+  to   = module.observability_secrets.helm_release.secrets
+}
+
+moved {
+  from = helm_release.prometheus
+  to   = module.prometheus.helm_release.prometheus
+}
+
+moved {
+  from = helm_release.platform_monitors
+  to   = module.platform_monitors.helm_release.platform_monitors
+}
+
+moved {
+  from = helm_release.loki
+  to   = module.loki.helm_release.loki
+}
+
+moved {
+  from = helm_release.tempo
+  to   = module.tempo.helm_release.tempo
+}
+
+moved {
+  from = helm_release.alloy
+  to   = module.alloy.helm_release.alloy
+}
+
+moved {
+  from = helm_release.otel_collector
+  to   = module.otel_collector.helm_release.otel_collector
+}
+
+moved {
+  from = helm_release.grafana
+  to   = module.grafana.helm_release.grafana
 }

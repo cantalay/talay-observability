@@ -14,6 +14,8 @@ Applications --OTLP--> OpenTelemetry Collector --traces--> Tempo
 - Traces: `Tempo 2.3.0` (single binary) + `OpenTelemetry Collector 0.172.0`
 - UI ve sinyal korelasyonu: `Grafana 13.1.0`
 
+Root stack yalnızca kompozisyondur. Her release ve values dosyası `modules/{prometheus,loki,tempo,alloy,otel-collector,grafana}` altında; ortak secret ve monitor kaynakları ise `modules/observability-secrets` ile `modules/platform-monitors` altında tutulur.
+
 Promtail 2026-03-02'de EOL olduğu için kullanılmaz. Grafana, Loki ve Tempo deprecated eski Grafana Helm deposundan değil aktif Grafana Community deposundan kurulur.
 
 ## Vault alanları
