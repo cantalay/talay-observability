@@ -18,6 +18,20 @@ Root stack yalnızca kompozisyondur. Her release ve values dosyası `modules/{pr
 
 Promtail 2026-03-02'de EOL olduğu için kullanılmaz. Grafana, Loki ve Tempo deprecated eski Grafana Helm deposundan değil aktif Grafana Community deposundan kurulur.
 
+## Gözlem hattı alarmları
+
+`charts/platform-monitors/templates/observability-pipeline-rules.yaml` hattın kendisini izler:
+- **DaemonSet kapsamı:** monitoring DaemonSet'lerinin her düğümde çalışması.
+- **Log hattı:** Alloy ayakta mı, Loki satır alıyor mu, düşen satır var mı.
+- **Diğer hatlar:** node-exporter; OTel Collector ve Tempo.
+
+2026-10-11'de Alloy ve node-exporter, elle eklenmiş bir `nodeSelector` yüzünden haftalarca 0 pod'da kaldı. İstenen pod
+sayısı 0 olduğu için varsayılan kurallar tetiklenmedi. Elle yapılan bu değişiklik geri alındı.
+
+Kural: bir bileşeni geçici kapatmak gerekirse bunu bu repoda, values üzerinden yap.
+
+k3s kube-proxy metriği yayınlamadığı için `kubeProxy.enabled: false` ayarlı; aksi hâlde `KubeProxyDown` sürekli çalar.
+
 ## Vault alanları
 
 ```text

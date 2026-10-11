@@ -2,3 +2,7 @@ vault:
   enabled: true
   namespace: vault
   interval: 30s
+
+# Gözlem hattı alarmları (Alloy, Loki, node-exporter, OTel/Tempo); templates/observability-pipeline-rules.yaml
+pipelineRules:
+  enabled: true
