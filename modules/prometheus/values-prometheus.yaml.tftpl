@@ -7,6 +7,10 @@ kubeControllerManager:
   enabled: false
 kubeScheduler:
   enabled: false
+# k3s kube-proxy'yi gömülü çalıştırır ve metrik yayınlamaz: hedef hep "down" görünür, KubeProxyDown sürekli çalar
+# ve gerçek alarmları gölgeler.
+kubeProxy:
+  enabled: false
 
 defaultRules:
   create: true

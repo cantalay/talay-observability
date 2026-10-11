@@ -1,0 +1,87 @@
+{{- if .Values.pipelineRules.enabled }}
+# Gözlem hattının kendisi için alarmlar. 2026-10-11'de Alloy ve node-exporter DaemonSet'leri elle eklenmiş bir
+# nodeSelector ile haftalarca 0 pod'da kaldı; istenen pod sayısı 0 olduğu için varsayılan kube-prometheus kuralları
+# (KubeDaemonSetNotScheduled vb.) hiç tetiklenmedi ve Loki'ye log gitmedi. Bu kurallar o boşluğu kapatır.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: talay-observability-pipeline
+  labels:
+    app.kubernetes.io/name: talay-observability-pipeline
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  groups:
+    - name: talay-observability-pipeline
+      rules:
+        - alert: TalayMonitoringDaemonSetNotOnAllNodes
+          expr: |
+            kube_daemonset_status_desired_number_scheduled{namespace="monitoring"}
+              < on() group_left() count(kube_node_info)
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{`{{ $labels.daemonset }}`}} her düğümde çalışmıyor"
+            description: >-
+              monitoring/{{`{{ $labels.daemonset }}`}} için istenen pod sayısı ({{`{{ $value }}`}}) düğüm sayısından az.
+              nodeSelector, taint ya da elle yapılan bir değişiklik DaemonSet'i devre dışı bırakmış olabilir; log (Alloy)
+              ya da düğüm metrikleri (node-exporter) eksik kalır.
+        - alert: TalayLogShipperDown
+          expr: absent(up{job="alloy"} == 1)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: Alloy çalışmıyor; container logları Loki'ye gitmiyor
+            description: "Prometheus en az bir sağlıklı Alloy hedefi göremiyor (job=alloy)."
+        - alert: TalayLokiNotIngesting
+          expr: |
+            sum(rate(loki_distributor_lines_received_total[10m])) == 0
+              or absent(loki_distributor_lines_received_total)
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: Loki 15 dakikadır log satırı almıyor
+            description: "Alloy → loki-gateway → Loki hattında kesinti; {namespace=...} sorguları boş döner."
+        - alert: TalayLogEntriesDropped
+          expr: sum by (reason) (rate(loki_write_dropped_entries_total[10m])) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Alloy log satırlarını düşürüyor ({{`{{ $labels.reason }}`}})"
+            description: "Loki'ye yazılamayan satırlar kayboluyor: oran sınırı, eski zaman damgası ya da bağlantı sorunu."
+        - alert: TalayLokiDown
+          expr: absent(up{job="monitoring/loki"} == 1)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: Loki hedefi ayakta değil
+            description: "Prometheus monitoring/loki hedefini sağlıklı göremiyor."
+        - alert: TalayNodeExporterDown
+          expr: absent(up{job="node-exporter"} == 1)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: node-exporter çalışmıyor; düğüm CPU, bellek ve disk metrikleri yok
+            description: "Disk dolması ve bellek baskısı alarmları bu metriklere dayanır."
+        - alert: TalayTracePipelineDown
+          expr: absent(up{job="otel-collector"} == 1) or absent(up{job="tempo"} == 1)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: İz (trace) hattı kesik
+            description: "OTel Collector ya da Tempo hedefi sağlıklı değil; uygulama izleri kaydedilmiyor."
+        - alert: TalayTraceSpansRefused
+          expr: sum(rate(otelcol_receiver_refused_spans[10m])) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: OTel Collector span reddediyor
+            description: "Collector bellek sınırı ya da Tempo bağlantısı nedeniyle izler kayboluyor."
+{{- end }}
