@@ -3,6 +3,12 @@ priorityClassName: talay-platform-critical
 
 tempo:
   reportingEnabled: false
+  # Chart varsayılanı 1024 MB bellek balastı: 1Gi limitte Go GC hedefi ~2 GB olur, heap çöple
+  # dolup OOMKilled döngüsüne girer (2026-10-14..28). Balast yok; GC'yi GOMEMLIMIT sınırlar.
+  memBallastSizeMbs: 0
+  extraEnv:
+    - name: GOMEMLIMIT
+      value: 820MiB
   retention: ${retention}
   resources:
     requests:
@@ -46,7 +52,3 @@ persistence:
 serviceMonitor:
   enabled: true
   interval: 30s
-
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "3200"
