@@ -37,7 +37,21 @@ k3s kube-proxy metriği yayınlamadığı için `kubeProxy.enabled: false` ayarl
 ```text
 kv/platform/grafana:      admin-user, admin-password
 kv/platform/alertmanager: config   # tam alertmanager.yaml içeriği
+kv/platform/telegram:     bot-token, chat-id
 ```
+
+## Alarm iletimi
+
+Alertmanager alarmları Telegram'a gider (`Watchdog`, `InfoInhibitor` ve `severity=info` hariç). Aynı bot,
+talay-app'teki `talay-backup` ve eski sunucudaki dış gözcü `talay-watch` bildirimlerinde de kullanılır.
+
+```bash
+export VAULT_ADDR=https://vault.cantalay.com && vault login -method=oidc
+vault kv patch kv/platform/telegram bot-token=-    # @BotFather token'ı stdin'den (yol yoksa: kv put)
+scripts/alertmanager-telegram.sh                   # chat id, Alertmanager config, telegram.env'ler, deneme alarmı
+```
+
+Dış gözcünün kontrol listesi `ops/talay-watch/checks`; değiştirince `scripts/talay-watch-sync.sh` ile kur.
 
 Java/Node uygulamaları OTLP HTTP için `http://otel-collector.monitoring.svc.cluster.local:4318` kullanır. Container stdout/stderr logları Alloy tarafından Loki'ye taşınır. Browser/mobil için public OTLP ingress varsayılan olarak kapalıdır; açılacaksa authentication, CORS ve rate limiting eklenmelidir.
 
