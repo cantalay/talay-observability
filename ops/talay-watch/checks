@@ -1,0 +1,20 @@
+# ad  url  (beklenen: HTTP 200, talay-app 152.53.66.101 uzerinden)
+# Eski sunucu 45.87.80.10 /etc/talay-watch/checks; kaynak burasi, scripts/talay-watch-sync.sh ile kurulur.
+vitapick              https://vita-pick.com/
+vitapick-admin        https://admin.vita-pick.com/
+vitapick-api          https://api.vita-pick.com/api/v1/categories
+conquest-api          https://api.conquest.cantalay.com/health/live
+conquest-admin        https://admin.conquest.cantalay.com/
+finance-web           https://finance.cantalay.com/
+finance-api           https://api.finance.cantalay.com/api/actuator/health
+notify-web            https://notify.cantalay.com/
+notify-api            https://api.notify.cantalay.com/actuator/health
+tela-web              https://tela.cantalay.com/
+tela-admin            https://admin.tela.cantalay.com/
+tela-api              https://api.tela.cantalay.com/actuator/health
+todogi-web            https://todogi.singlestranger.com/
+todogi-api            https://api.singlestranger.com/api/health
+keycloak              https://auth.cantalay.com/realms/master
+vault                 https://vault.cantalay.com/v1/sys/health
+grafana               https://grafana.cantalay.com/api/health
+argocd                https://argocd.cantalay.com/healthz
