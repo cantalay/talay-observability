@@ -9,6 +9,10 @@ tempo:
   extraEnv:
     - name: GOMEMLIMIT
       value: 820MiB
+  # Varsayılan 30 dk'lık head bloğu (~53 MB WAL) parquet'e çevrilirken heap 600-725 MB'a sıçrıyor,
+  # container 1Gi'ye dayanıyordu (2026-10-28). 10 dk'lık bloklar tepeyi ~üçte bire indirir.
+  ingester:
+    max_block_duration: 10m
   retention: ${retention}
   resources:
     requests:
