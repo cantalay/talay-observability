@@ -3,8 +3,10 @@
 vitapick              https://vita-pick.com/
 vitapick-admin        https://admin.vita-pick.com/
 vitapick-api          https://api.vita-pick.com/api/v1/categories
-conquest-api          https://api.conquest.cantalay.com/health/live
-conquest-admin        https://admin.conquest.cantalay.com/
+conquest-web          https://colonycon.art/
+conquest-site         https://colonycon.art/legal/privacy
+conquest-api          https://api.colonycon.art/health/live
+conquest-admin        https://admin.colonycon.art/
 finance-web           https://finance.cantalay.com/
 finance-api           https://api.finance.cantalay.com/api/actuator/health
 notify-web            https://notify.cantalay.com/
