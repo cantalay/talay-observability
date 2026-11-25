@@ -12,6 +12,30 @@ kubeScheduler:
 kubeProxy:
   enabled: false
 
+# k3s'te apiserver/etcd/scheduler/controller-manager kubelet ile aynı süreçte: kubelet /metrics bu metriklerin
+# hepsini ikinci kez yayınlıyor (~70k seri, toplamın üçte biri). Kubelet'in kendi metrikleri kalır; kontrol düzlemi
+# apiserver işinden gelir. İlk kural chart varsayılanı.
+kubelet:
+  serviceMonitor:
+    metricRelabelings:
+      - action: drop
+        sourceLabels: [__name__, le]
+        regex: (csi_operations|storage_operation_duration)_seconds_bucket;(0.25|2.5|15|25|120|600)(\.0)?
+      - action: drop
+        sourceLabels: [__name__]
+        regex: (apiserver|apiextensions|aggregator|authentication|authorization|etcd|scheduler|workqueue|watch_cache|node_authorizer|kube_apiserver|cronjob_controller|endpoint_slice|replicaset_controller|garbagecollector|node_collector|serviceaccount|ttl_after_finished|job_controller|pod_security|admission|field_validation|flowcontrol|apf|registered|storage_list|cardinality_enforcement|leader_election|kubernetes_feature)_.*
+
+# Alarmların (burn-rate) kullanmadığı yüksek kartinaliteli histogramlar. İlk kural chart varsayılanı.
+kubeApiServer:
+  serviceMonitor:
+    metricRelabelings:
+      - action: drop
+        sourceLabels: [__name__, le]
+        regex: (etcd_request|apiserver_request_slo|apiserver_request_sli|apiserver_request)_duration_seconds_bucket;(0\.15|0\.2|0\.3|0\.35|0\.4|0\.45|0\.6|0\.7|0\.8|0\.9|1\.25|1\.5|1\.75|2|3|3\.5|4|4\.5|6|7|8|9|15|20|40|45|50)(\.0)?
+      - action: drop
+        sourceLabels: [__name__]
+        regex: (etcd_request_duration_seconds|apiserver_request_body_size_bytes|apiserver_response_sizes|apiserver_watch_list_duration_seconds|apiserver_watch_cache_read_wait_seconds|apiserver_watch_events_sizes)_bucket
+
 defaultRules:
   create: true
 
@@ -74,6 +98,10 @@ prometheus:
           - action: keep
             source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
             regex: "true"
+          # node-exporter chart ServiceMonitor'ıyla zaten kazınıyor: çift seri
+          - action: drop
+            source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name]
+            regex: monitoring;kube-prometheus-stack-prometheus-node-exporter
           - action: replace
             source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
             target_label: __scheme__
@@ -100,6 +128,10 @@ prometheus:
           - action: keep
             source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             regex: "true"
+          # Bu pod'lar servis anotasyonu (traefik, redis) veya ServiceMonitor (loki) ile zaten kazınıyor: çift seri
+          - action: drop
+            source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_name]
+            regex: (ingress-system;traefik|data;redis|monitoring;loki)
           - action: replace
             source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
             target_label: __metrics_path__
